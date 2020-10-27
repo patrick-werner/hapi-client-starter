@@ -4,14 +4,19 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
+import org.hl7.fhir.r4.model.Address;
+import org.hl7.fhir.r4.model.Address.AddressType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.HumanName.NameUse;
+import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.StringType;
 
 public class HapiClientStarter {
@@ -65,11 +70,30 @@ public class HapiClientStarter {
     CodeableConcept gkvPatient = new CodeableConcept();
     gkvPatient.addCoding()
         .setSystem("http://fhir.de/CodeSystem/identifier-type-de-basis").setCode("GKV");
+    Identifier identifier = new Identifier().setSystem("http://fhir.de/NamingSystem/arge-ik/iknr")
+        .setValue("0123456789");
+    Reference reference = new Reference().setIdentifier(identifier);
     patient.addIdentifier().setType(gkvPatient)
-        .setSystem("http://fhir.de/NamingSystem/gkv/kvid-10").setValue("0123456789");
+        .setSystem("http://fhir.de/NamingSystem/gkv/kvid-10").setValue("0123456789")
+        .setAssigner(reference);
 
     //ID setzen ++++ ACHTUNG!!! IDs werden normalerweise VOM SERVER gesetzt ++++
     patient.setId("superID");
+
+    //Adresse
+    Address address = patient.getAddressFirstRep();
+    address.setType(AddressType.PHYSICAL);
+    ArrayList<StringType> lines = new ArrayList<>();
+    StringType line = new StringType("StraßenStraße 12A");
+    line.addExtension("http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-streetName",
+        new StringType("StraßenStraße"));
+    line.addExtension("http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-houseNumber",
+        new StringType("12A"));
+    lines.add(line);
+    address.setLine(lines);
+    address.setPostalCode("12345");
+    address.setCity("Venusheim");
+    address.setCountry("AUS");
 
     //encoden in JSON und XML
     IParser jsonParser = ctx.newJsonParser().setPrettyPrint(true);
