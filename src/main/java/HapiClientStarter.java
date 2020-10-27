@@ -7,8 +7,11 @@ import java.time.ZoneId;
 import java.util.Date;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
+import org.hl7.fhir.r4.model.HumanName;
+import org.hl7.fhir.r4.model.HumanName.NameUse;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.StringType;
 
 public class HapiClientStarter {
 
@@ -19,7 +22,9 @@ public class HapiClientStarter {
 
     //Patient erstellen
     Patient patient = new Patient();
+    //Profil setzen
     patient.getMeta().addProfile("http://fhir.gematik.de/isik/StructureDefinition/IsikPatient");
+    //Patient.active true setzen
     patient.setActive(true);
     //Geschlecht Divers setzen
     patient.setGender(AdministrativeGender.OTHER);
@@ -30,6 +35,20 @@ public class HapiClientStarter {
     LocalDate localDate = LocalDate.of(1980, 02, 20);
     Date date = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
     patient.setBirthDate(date);
+
+    //Namen setzen
+    HumanName name = patient.getNameFirstRep();
+    name.setUse(NameUse.OFFICIAL);
+    name.setFamily("Gräf:in van Familienname").addGiven("EinVorname");
+    //Namenszusatz
+    name.addExtension("http://fhir.de/StructureDefinition/humanname-namenszusatz",
+        new StringType("Gräf:in"));
+    //Vorsatzwort
+    name.addExtension("http://hl7.org/fhir/StructureDefinition/humanname-own-prefix",
+        new StringType("van"));
+    //Alleinstehender Nachname
+    name.addExtension("http://hl7.org/fhir/StructureDefinition/humanname-own-name",
+        new StringType("Familienname"));
 
     //encoden in JSON und XML
     IParser jsonParser = ctx.newJsonParser().setPrettyPrint(true);
