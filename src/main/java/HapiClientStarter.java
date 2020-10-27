@@ -5,7 +5,9 @@ public class HapiClientStarter {
 
   public static void main(String[] args) {
     FhirContext ctx = FhirContext.forR4();
-    String serverBase = "https://dit-fhir.molit.eu/fhir";
+    String serverBase = "https://vonk.fire.ly/r4/";
     IGenericClient client = ctx.newRestfulGenericClient(serverBase);
+
+
   }
 }
