@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.HumanName.NameUse;
@@ -22,14 +23,17 @@ public class HapiClientStarter {
 
     //Patient erstellen
     Patient patient = new Patient();
-    //Profil setzen
+    //Profile setzen
     patient.getMeta().addProfile("http://fhir.gematik.de/isik/StructureDefinition/IsikPatient");
+    patient.getMeta().addProfile("https://fhir.kbv.de/StructureDefinition/KBV_PR_Base_Patient");
+    patient.getMeta().addProfile(
+        "https://www.medizininformatik-initiative.de/fhir/core/modul-person/StructureDefinition/Patient");
     //Patient.active true setzen
     patient.setActive(true);
     //Geschlecht Divers setzen
     patient.setGender(AdministrativeGender.OTHER);
     patient.getGenderElement().addExtension("http://fhir.de/StructureDefinition/gender-amtlich-de",
-        new CodeableConcept().addCoding().setSystem("http://fhir.de/CodeSystem/gender-amtlich-de")
+        new Coding().setSystem("http://fhir.de/CodeSystem/gender-amtlich-de")
             .setCode("D").setDisplay("divers"));
     //Geburtsdatum
     LocalDate localDate = LocalDate.of(1980, 02, 20);
@@ -50,6 +54,23 @@ public class HapiClientStarter {
     name.addExtension("http://hl7.org/fhir/StructureDefinition/humanname-own-name",
         new StringType("Familienname"));
 
+    //PID Identifier setzen
+    CodeableConcept mrConcept = new CodeableConcept();
+    mrConcept.addCoding()
+        .setSystem("http://terminology.hl7.org/CodeSystem/v2-0203").setCode("MR");
+    patient.addIdentifier().setType(mrConcept)
+        .setSystem("http://superKrankenhaus/fhir/NamingSystem/patientenID").setValue("0123456789");
+
+    //GKV Identifier
+    CodeableConcept gkvPatient = new CodeableConcept();
+    gkvPatient.addCoding()
+        .setSystem("http://fhir.de/CodeSystem/identifier-type-de-basis").setCode("GKV");
+    patient.addIdentifier().setType(gkvPatient)
+        .setSystem("http://fhir.de/NamingSystem/gkv/kvid-10").setValue("0123456789");
+
+    //ID setzen ++++ ACHTUNG!!! IDs werden normalerweise VOM SERVER gesetzt ++++
+    patient.setId("superID");
+
     //encoden in JSON und XML
     IParser jsonParser = ctx.newJsonParser().setPrettyPrint(true);
     IParser xmlParser = ctx.newXmlParser().setPrettyPrint(true);
@@ -64,8 +85,6 @@ public class HapiClientStarter {
 // The returned object will contain an operation outcome resource
     OperationOutcome oo = (OperationOutcome) outcome.getOperationOutcome();
 
-// If the OperationOutcome has any issues with a severity of ERROR or SEVERE,
-// the validation failed.
     for (OperationOutcome.OperationOutcomeIssueComponent nextIssue : oo.getIssue()) {
       System.out.println(nextIssue.getSeverity() + ": " + nextIssue.getDetails().getText());
     }
