@@ -15,7 +15,7 @@ import org.hl7.fhir.dstu3.model.Patient;
 import org.hl7.fhir.dstu3.model.Practitioner;
 import org.hl7.fhir.dstu3.model.Reference;
 import org.hl7.fhir.dstu3.model.StringType;
-import org.hl7.fhir.instance.model.api.IBaseOperationOutcome;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.instance.model.api.IIdType;
 
 
@@ -47,7 +47,25 @@ public class VosClient {
     parser = ctx.newJsonParser().setPrettyPrint(true);
     System.out.println(parser.encodeResourceToString(request));
 
-    createReadUpdateDelete(patient, client);
+
+
+//    createReadUpdateDelete(patient, client);
+    validateResource(patient, client);
+  }
+
+  private static void validateResource(IBaseResource resource, IGenericClient client) {
+    // Validate the resource
+    resource.setId("");
+    resource.getMeta().addProfile("https://fhir.kbv.de/StructureDefinition/74_PR_VoS_Patient");
+    System.out.println(parser.encodeResourceToString(resource));
+    MethodOutcome outcome = client.validate()
+        .resource(resource)
+        .execute();
+
+// The returned object will contain an operation outcome resource
+    OperationOutcome oo = (OperationOutcome) outcome.getOperationOutcome();
+
+    oo.getIssue().stream().map(i -> i.getDiagnostics()).forEach(System.out::println);
   }
 
   private static void createReadUpdateDelete(Patient patient, IGenericClient client) {
