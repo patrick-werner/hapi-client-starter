@@ -1,5 +1,6 @@
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import java.util.Date;
 import org.hl7.fhir.dstu3.model.CodeableConcept;
@@ -8,45 +9,69 @@ import org.hl7.fhir.dstu3.model.ContactPoint.ContactPointSystem;
 import org.hl7.fhir.dstu3.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.dstu3.model.Medication;
 import org.hl7.fhir.dstu3.model.MedicationRequest;
+import org.hl7.fhir.dstu3.model.OperationOutcome;
 import org.hl7.fhir.dstu3.model.Organization;
 import org.hl7.fhir.dstu3.model.Patient;
 import org.hl7.fhir.dstu3.model.Practitioner;
 import org.hl7.fhir.dstu3.model.Reference;
 import org.hl7.fhir.dstu3.model.StringType;
+import org.hl7.fhir.instance.model.api.IBaseOperationOutcome;
+import org.hl7.fhir.instance.model.api.IIdType;
 
 
 public class VosClient {
 
-  private static Patient pat;
-  private static Practitioner practitioner;
-  private static Medication medication;
-  private static Organization organization;
+  private static IParser parser;
+  private Patient pat;
+  private Practitioner practitioner;
+  private Medication medication;
+  private Organization organization;
 
   public static void main(String[] args) {
     FhirContext ctx = FhirContext.forDstu3();
     String serverBase = "http://hapi.fhir.org/baseDstu3";
     IGenericClient client = ctx.newRestfulGenericClient(serverBase);
 
-    pat = getVosPat();
-    pat.setId("Patient/1234");
-    practitioner = getVosPract();
+    Patient patient = getVosPat();
+    patient.setId("Patient/1234");
+    Practitioner practitioner = getVosPract();
     practitioner.setId("Practitioner/123");
-    medication = getVosMedication();
+    Medication medication = getVosMedication();
     medication.setId("Medication/4654");
-    organization = getOrganization();
+    Organization organization = getOrganization();
     organization.setId("Organization/234345");
 
-    MedicationRequest request = createMedicationRequest(practitioner, medication, organization);
+    MedicationRequest request = createMedicationRequest(patient, practitioner, medication,
+        organization);
 
-    IParser parser = ctx.newJsonParser().setPrettyPrint(true);
+    parser = ctx.newJsonParser().setPrettyPrint(true);
     System.out.println(parser.encodeResourceToString(request));
+
+    createReadUpdateDelete(patient, client);
   }
 
-  private static MedicationRequest createMedicationRequest(Practitioner practitioner,
+  private static void createReadUpdateDelete(Patient patient, IGenericClient client) {
+    patient.setId("");
+    MethodOutcome outcome = client.create().resource(patient).execute();
+    IIdType id = outcome.getId();
+    System.out.println("Got ID: " + id.getValue());
+    patient.setId(id.getValue());
+
+    client.update().resource(patient).execute();
+    //client.delete().resource(patient).execute();
+    Patient newPatient = client.read().resource(Patient.class).withId(id.getIdPart()).execute();
+    System.out.println(parser.encodeResourceToString(newPatient));
+
+    System.out.println(id.getIdPart());
+  }
+
+
+  private static MedicationRequest createMedicationRequest(Patient patient,
+      Practitioner practitioner,
       Medication medication, Organization organization) {
     MedicationRequest request = new MedicationRequest();
 //    request.setSubject(new Reference(pat));
-    request.setSubject(new Reference(pat));
+    request.setSubject(new Reference(patient));
     request.getRequester().setAgent(new Reference(practitioner))
         .setOnBehalfOf(new Reference(organization));
     request.setMedication(new Reference(medication));
