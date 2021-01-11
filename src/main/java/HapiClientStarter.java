@@ -47,7 +47,7 @@ public class HapiClientStarter {
     //Glucose Observation
     Observation gluc = new Observation();
     gluc.getMeta().addProfile(
-        "http://build.fhir.org/ig/HL7/fhir-ips/StructureDefinition-Observation-results-uv-ips");
+        "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-uv-ips");
     gluc.setStatus(ObservationStatus.FINAL);
     gluc.addCategory().addCoding()
         .setSystem("http://terminology.hl7.org/CodeSystem/observation-category")
@@ -110,7 +110,7 @@ public class HapiClientStarter {
     bundle.setType(Bundle.BundleType.TRANSACTION);
 
     //print Patient
-    System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(pat));
+    System.out.println(ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
 
     //persist Bundle
     Bundle execute1 = client.transaction().withBundle(bundle).execute();
