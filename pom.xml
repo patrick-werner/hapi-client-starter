@@ -8,7 +8,7 @@
   <properties>
     <java.version>1.8</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <hapi.version>5.1.0</hapi.version>
+    <hapi.version>5.4.0</hapi.version>
   </properties>
 
   <dependencies>
