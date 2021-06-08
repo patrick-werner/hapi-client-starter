@@ -1,8 +1,8 @@
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
-import java.util.Date;
 import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.HumanName;
@@ -21,10 +21,10 @@ public class HapiClientStarter {
 
     Patient patient = new Patient();
 
-    patient.setId("123456");
+    patient.setId("2161215");
 
     patient.setActive(true);
-    patient.setGender(AdministrativeGender.FEMALE);
+    patient.setGender(AdministrativeGender.OTHER);
     patient.setBirthDateElement(new DateType("1980-05-03"));
     // identisch: patient.setBirthDate(new Date("1980-05-03"));
 
@@ -43,7 +43,15 @@ public class HapiClientStarter {
     name.addGiven("Vorname");
     name.setText("Vorname Nachname");
 
+    patient.getMeta().addProfile("https://gematik.de/fhir/ISiK/StructureDefinition/ISiKPatient");
+
     IParser jsonParser = ctx.newJsonParser().setPrettyPrint(true);
     System.out.println(jsonParser.encodeResourceToString(patient));
+
+    MethodOutcome execute = client.create().resource(patient).execute();
+
+//    System.out.println(execute.getId());
+
+//    client.delete().resourceById(new IdType("Patient/2161215")).execute();
   }
 }
