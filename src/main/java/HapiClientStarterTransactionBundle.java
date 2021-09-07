@@ -1,21 +1,30 @@
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.fhirpath.IFhirPath;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import java.util.Date;
-import org.hl7.fhir.dstu2016may.model.HumanName;
-import org.hl7.fhir.instance.model.api.IIdType;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.fhir.ucum.BaseUnit;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.Bundle.BundleType;
+import org.hl7.fhir.r4.model.Bundle.HTTPVerb;
 import org.hl7.fhir.r4.model.Condition;
 import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
+import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.HumanName.NameUse;
+import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.Resource;
 
-public class HapiClientStarterCreateUpdateDelete {
+
+public class HapiClientStarterTransactionBundle {
 
   public static void main(String[] args) {
     FhirContext ctx = FhirContext.forR4();
@@ -25,50 +34,32 @@ public class HapiClientStarterCreateUpdateDelete {
     IParser parser = ctx.newJsonParser().setPrettyPrint(true);
 
     Patient patient = createPatient();
-    client.update().resource(patient).execute();
 
     Encounter encounter = createEncounter(patient);
-    client.update().resource(encounter).execute();
 
     Condition condition = createCondition(patient, encounter);
-    MethodOutcome execute = client.update().resource(condition).execute();
-    IIdType conditionId = execute.getId();
 
-    Patient readPatient = client.read().resource(Patient.class).withId(patient.getId()).execute();
+    Bundle bundle = createTransactionBundle(List.of(patient, encounter, condition));
+    System.out.println(parser.encodeResourceToString(bundle));
+    Bundle respBundle = client.transaction().withBundle(bundle).execute();
+    System.out.println(parser.encodeResourceToString(respBundle));
+  }
 
-    readPatient.setGender(AdministrativeGender.FEMALE);
-
-    MethodOutcome methodOutcome = client.update().resource(readPatient).execute();
-    System.out.println(methodOutcome.getId());
-
-    // client.delete().resource(readPatient).execute();
-
-    //passt evtl.
-    client.search().forResource(Condition.class).where(Condition.RES_ID.exactly().code(conditionId.getIdPart())).execute();
-
-    Bundle returnBundle =
-        client
-            .search()
-            .byUrl(
-                "Condition?_id="
-                    + conditionId.getIdPart()
-                    + "&_include=Condition:subject&_include=Condition:encounter")
-            .returnBundle(Bundle.class)
-            .execute();
-
-    System.out.println(parser.encodeResourceToString(returnBundle));
-
-    // TODO: validation in client broken at the moment
-    //    MethodOutcome execute = client.validate().resource(patient).execute();
-    //    OperationOutcome operationOutcome = (OperationOutcome) execute.getOperationOutcome();
-    //    operationOutcome.getIssue().forEach(i -> {
-    //      System.out.println(i.getSeverity() + ": " + i.getDiagnostics());
-    //    });
+  private static Bundle createTransactionBundle(List<Resource> resources) {
+    Bundle bundle = new Bundle();
+    bundle.setType(BundleType.TRANSACTION);
+    resources.forEach(r -> {
+      BundleEntryComponent bundleEntryComponent = bundle.addEntry();
+      bundleEntryComponent.setFullUrl(r.getId());
+      bundleEntryComponent.setResource(r);
+      bundleEntryComponent.getRequest().setUrl(r.getResourceType().name()).setMethod(HTTPVerb.POST);
+    });
+    return  bundle;
   }
 
   private static Condition createCondition(Patient patient, Encounter encounter) {
     Condition condition = new Condition();
-    condition.setId("condition01");
+    condition.setId(IdType.newRandomUuid());
     condition.setRecordedDate(new Date());
     condition
         .getClinicalStatus()
@@ -88,7 +79,7 @@ public class HapiClientStarterCreateUpdateDelete {
 
   private static Encounter createEncounter(Patient patient) {
     Encounter enc = new Encounter();
-    enc.setId("encounter01");
+    enc.setId(IdType.newRandomUuid());
     Identifier identifier = enc.addIdentifier();
     identifier
         .getType()
@@ -119,7 +110,7 @@ public class HapiClientStarterCreateUpdateDelete {
   private static Patient createPatient() {
     Patient pat = new Patient();
     pat.setActive(true);
-    pat.setId("patient01");
+    pat.setId(IdType.newRandomUuid());
     pat.addName().setUse(NameUse.OFFICIAL).setFamily("Werner").addGiven("Patrick");
     pat.addName().setUse(NameUse.MAIDEN).setFamily("TestName");
     Identifier identifier = pat.addIdentifier();
