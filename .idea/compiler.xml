@@ -7,6 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="hapi-client-starter" />
+        <module name="client-starter" />
       </profile>
     </annotationProcessing>
   </component>
