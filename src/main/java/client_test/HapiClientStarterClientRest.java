@@ -2,7 +2,6 @@ package client_test;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import java.util.Date;
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -13,11 +12,10 @@ import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.HumanName.NameUse;
 import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
 
-public class HapiClientStarter {
+public class HapiClientStarterClientRest {
 
   public static void main(String[] args) {
 
@@ -32,20 +30,10 @@ public class HapiClientStarter {
     Encounter enc = createEncounter(pat);
     System.out.println(parser.encodeResourceToString(enc));
     Condition cond = createCondition(pat, enc);
-
-    // Validation
-    MethodOutcome execute = client.validate().resource(pat).execute();
-    OperationOutcome oo = (OperationOutcome) execute.getOperationOutcome();
-    oo.getIssue()
-        .forEach(
-            i -> {
-              System.out.println(i.getSeverity() + ": " + i.getDiagnostics());
-            });
   }
 
   private static Patient createPatient() {
     Patient patient = new Patient();
-    patient.getMeta().addProfile("https://gematik.de/fhir/ISiK/StructureDefinition/ISiKPatient");
     CodeableConcept cc = new CodeableConcept();
     cc.addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v2-0203").setCode("MR");
     patient
@@ -53,7 +41,7 @@ public class HapiClientStarter {
         .setSystem("http://meinkrankhaus.de/fhir/sid/patientId")
         .setValue("0123456789")
         .setType(cc);
-    // patient.setId("testId");
+    patient.setId("testId");
     patient.setActive(true);
     patient.addName().setUse(NameUse.OFFICIAL).setFamily("Nachname").addGiven("Vorname");
     patient.setGender(AdministrativeGender.OTHER);
