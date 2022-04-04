@@ -2,8 +2,12 @@ package client_test;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import java.util.Date;
+import org.hl7.fhir.instance.model.api.IIdType;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Condition;
@@ -30,6 +34,26 @@ public class HapiClientStarterClientRest {
     Encounter enc = createEncounter(pat);
     System.out.println(parser.encodeResourceToString(enc));
     Condition cond = createCondition(pat, enc);
+    MethodOutcome execute;
+    execute = client.update().resource(pat).execute();
+    System.out.println(execute.getId());
+    execute = client.update().resource(enc).execute();
+    System.out.println(execute.getId());
+    execute = client.create().resource(cond).execute();
+    IIdType id = execute.getId();
+    System.out.println(id);
+
+    Bundle bundle =
+        client
+            .search()
+            .forResource(Condition.class)
+            .where(new TokenClientParam("_id").exactly().code(id.getIdPart()))
+            .include(Condition.INCLUDE_PATIENT)
+            .include(Condition.INCLUDE_ENCOUNTER)
+            .returnBundle(Bundle.class)
+            .execute();
+
+    System.out.println(parser.encodeResourceToString(bundle));
   }
 
   private static Patient createPatient() {
