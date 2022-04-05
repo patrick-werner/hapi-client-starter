@@ -2,21 +2,29 @@ package client_test;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import java.util.Date;
+import java.util.Optional;
+import org.hl7.fhir.instance.model.api.IIdType;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Condition;
 import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.HumanName.NameUse;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 
-public class HapiClientStarter {
+public class HapiClientStarterSelectElements {
 
   public static void main(String[] args) {
 
@@ -31,21 +39,58 @@ public class HapiClientStarter {
     Encounter enc = createEncounter(pat);
     System.out.println(parser.encodeResourceToString(enc));
     Condition cond = createCondition(pat, enc);
-    System.out.println(parser.encodeResourceToString(cond));
+    MethodOutcome execute;
+    execute = client.update().resource(pat).execute();
+    System.out.println(execute.getId());
+    execute = client.update().resource(enc).execute();
+    System.out.println(execute.getId());
+    execute = client.create().resource(cond).execute();
+    IIdType id = execute.getId();
+    System.out.println(id);
 
-    // Validation
-    //    MethodOutcome execute = client.validate().resource(pat).execute();
-    //    OperationOutcome oo = (OperationOutcome) execute.getOperationOutcome();
-    //    oo.getIssue()
-    //        .forEach(
-    //            i -> {
-    //              System.out.println(i.getSeverity() + ": " + i.getDiagnostics());
-    //            });
+    Bundle bundle =
+        client
+            .search()
+            .forResource(Condition.class)
+            .where(new TokenClientParam("_id").exactly().code(id.getIdPart()))
+            .include(Condition.INCLUDE_PATIENT)
+            .include(Condition.INCLUDE_ENCOUNTER)
+            .returnBundle(Bundle.class)
+            .execute();
+
+    System.out.println(parser.encodeResourceToString(bundle));
+
+    selectItemsFromBundle(bundle);
   }
 
-  public static Patient createPatient() {
+  private static void selectItemsFromBundle(Bundle bundle) {
+    // PATIENT
+    Optional<Resource> patResource =
+        bundle.getEntry().stream()
+            .filter(e -> e.getResource().getResourceType().equals(ResourceType.Patient))
+            .map(e -> e.getResource())
+            .findAny();
+    Patient patient = (Patient) patResource.get();
+    // NAME
+    Optional<HumanName> name =
+        patient.getName().stream().filter(n -> n.getUse().equals(NameUse.OFFICIAL)).findAny();
+    System.out.println(
+        "name: " + name.get().getFamily() + " " + name.get().getGivenAsSingleString());
+    // GEBURTSNAME
+    name = patient.getName().stream().filter(n -> n.getUse().equals(NameUse.MAIDEN)).findAny();
+    System.out.println(
+        "Geburtsname: " + name.get().getFamily() + " " + name.get().getGivenAsSingleString());
+    if (name.isPresent()) {
+      Extension extension =
+          name.get()
+              .getExtensionByUrl("http://hl7.org/fhir/StructureDefinition/humanname-own-name");
+      StringType value = (StringType) extension.getValue();
+      System.out.println("Name(Extension): " + value.getValue());
+    }
+  }
+
+  private static Patient createPatient() {
     Patient patient = new Patient();
-    patient.getMeta().addProfile("https://gematik.de/fhir/ISiK/StructureDefinition/ISiKPatient");
     CodeableConcept cc = new CodeableConcept();
     cc.addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v2-0203").setCode("MR");
     patient
@@ -53,7 +98,7 @@ public class HapiClientStarter {
         .setSystem("http://meinkrankhaus.de/fhir/sid/patientId")
         .setValue("0123456789")
         .setType(cc);
-    // patient.setId("testId");
+    patient.setId("testId");
     patient.setActive(true);
     patient.addName().setUse(NameUse.OFFICIAL).setFamily("Nachname").addGiven("Vorname");
     patient
@@ -64,6 +109,7 @@ public class HapiClientStarter {
         .addExtension()
         .setUrl("http://hl7.org/fhir/StructureDefinition/humanname-own-name")
         .setValue(new StringType("Maidenextension"));
+
     patient.setGender(AdministrativeGender.OTHER);
     patient.setBirthDate(new Date());
     return patient;
@@ -85,12 +131,6 @@ public class HapiClientStarter {
         .setSystem("http://snomed.info/sct")
         .setCode("389145006")
         .setDisplay("allergisches Asthma");
-    condition
-        .getCode()
-        .addCoding()
-        .setSystem("http://fhir.de/CodeSystem/bfarm/icd-10-gm")
-        .setCode("J45.0")
-        .setDisplay("Vorwiegend allergisches Asthma bronchiale");
     return condition;
   }
 
